@@ -1,46 +1,41 @@
 package main
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/push"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/snowdiceX/metrics_forwarder/collector"
-	"github.com/snowdiceX/metrics_forwarder/log"
+	"github.com/snowdiceX/metrics-forwarder/log"
 )
 
 func main() {
-	// Since we are dealing with custom Collector implementations, it might
-	// be a good idea to try it out with a pedantic registry.
-	reg := prometheus.NewPedanticRegistry()
+	defer log.Flush()
 
-	// // Construct forwarder collector. In real code, we would assign them to
-	// // variables to then do something with them.
-	collector := collector.NewForwarderCollector(
-		"mainnet", "78", "http://127.0.0.1:26660/metrics", reg)
+	root := NewRootCommand()
+	root.AddCommand(
+		NewStartCommand(starter, true),
+		NewVersionCommand(versioner, false))
 
-	// // // Add the standard process and Go metrics to the custom registry.
-	// // reg.MustRegister(
-	// // 	prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
-	// // 	prometheus.NewGoCollector(),
-	// // )
+	if err := root.Execute(); err != nil {
+		log.Error("Exit by error: ", err)
+	}
+}
 
-	// http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	// log.Fatal(http.ListenAndServe(":8080", nil))
+// KeepRunning just keep running
+func KeepRunning(callback func(sig os.Signal)) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 
-	// families, err := reg.Gather()
-	// if err != nil {
-	// 	fmt.Println("gather error: ", err)
-	// 	return
-	// }
-	// for _, f := range families {
-	// 	fmt.Println("families: ", f.GetName(), "; ", f.GetHelp(), "; ", f.GetType())
-	// }
-	// fmt.Println("done")
-
-	if err := push.New("http://127.0.0.1:9091", "irishub").
-		Collector(collector).
-		Grouping("service", "blockchain").
-		Push(); err != nil {
-		log.Errorf("Could not push metrics to pushgateway: %d", err)
+	select {
+	case s, ok := <-signals:
+		log.Infof("System signal [%v] %t, trying to run callback...", s, ok)
+		if !ok {
+			break
+		}
+		if callback != nil {
+			callback(s)
+		}
+		log.Flush()
+		os.Exit(1)
 	}
 }

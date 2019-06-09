@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"github.com/snowdiceX/metrics_forwarder/log"
+	"github.com/snowdiceX/metrics-forwarder/log"
 )
 
 // MetricsSource is a source of a prometheus metrics.
