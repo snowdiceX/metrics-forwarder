@@ -44,7 +44,7 @@ func (c *MetricsSource) Pull() (
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("metrics: %d", len(metricFamilies))
+	log.Infof("metrics: %d", len(metricFamilies))
 	for k, m := range metricFamilies {
 		log.Trace("metric family: ", k, m.GetName(), "; ", m.Help, "; ", m.Type)
 	}
@@ -76,29 +76,14 @@ func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	for k, f := range families {
 		log.Trace("collect metric family: ", k)
-		if f.GetType() == dto.MetricType_GAUGE {
-			metrics := f.GetMetric()
-			for _, m := range metrics {
-				g := m.GetGauge()
-				lnames := []string{"host"}
-				lvalues := []string{cc.Source.Host}
-				labels := m.GetLabel()
-				for _, l := range labels {
-					lnames = append(lnames, l.GetName())
-					lvalues = append(lvalues, l.GetValue())
-					log.Trace("label pair: %s; %s", l.GetName(), l.GetValue())
-				}
-				desc := prometheus.NewDesc(
-					f.GetName(),
-					f.GetHelp(),
-					lnames, nil,
-				)
-				ch <- prometheus.MustNewConstMetric(
-					desc,
-					prometheus.GaugeValue,
-					g.GetValue(),
-					lvalues...,
-				)
+		switch f.GetType() {
+		case dto.MetricType_COUNTER:
+			{
+				buildCounter(cc.Source.Host, f, ch)
+			}
+		case dto.MetricType_GAUGE:
+			{
+				buildGauge(cc.Source.Host, f, ch)
 			}
 		}
 	}
@@ -120,4 +105,58 @@ func NewForwarderCollector(zone, host, url string,
 	prometheus.WrapRegistererWith(
 		prometheus.Labels{"zone": zone}, reg).MustRegister(cc)
 	return &cc
+}
+
+func buildCounter(host string, family *dto.MetricFamily,
+	ch chan<- prometheus.Metric) {
+	metrics := family.GetMetric()
+	for _, m := range metrics {
+		g := m.GetCounter()
+		lnames := []string{"host"}
+		lvalues := []string{host}
+		labels := m.GetLabel()
+		for _, l := range labels {
+			lnames = append(lnames, l.GetName())
+			lvalues = append(lvalues, l.GetValue())
+			log.Trace("label pair: %s; %s", l.GetName(), l.GetValue())
+		}
+		desc := prometheus.NewDesc(
+			family.GetName(),
+			family.GetHelp(),
+			lnames, nil,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			desc,
+			prometheus.CounterValue,
+			g.GetValue(),
+			lvalues...,
+		)
+	}
+}
+
+func buildGauge(host string, family *dto.MetricFamily,
+	ch chan<- prometheus.Metric) {
+	metrics := family.GetMetric()
+	for _, m := range metrics {
+		g := m.GetGauge()
+		lnames := []string{"host"}
+		lvalues := []string{host}
+		labels := m.GetLabel()
+		for _, l := range labels {
+			lnames = append(lnames, l.GetName())
+			lvalues = append(lvalues, l.GetValue())
+			log.Trace("label pair: %s; %s", l.GetName(), l.GetValue())
+		}
+		desc := prometheus.NewDesc(
+			family.GetName(),
+			family.GetHelp(),
+			lnames, nil,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			desc,
+			prometheus.GaugeValue,
+			g.GetValue(),
+			lvalues...,
+		)
+	}
 }

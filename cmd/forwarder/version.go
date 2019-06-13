@@ -15,6 +15,12 @@ var (
 
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
+
+	// GoVersion is version info of golang
+	GoVersion string
+
+	// BuidDate is compile date and time
+	BuidDate string
 )
 
 // NewVersionCommand create version command
@@ -31,11 +37,14 @@ func NewVersionCommand(run Runner, isKeepRunning bool) *cobra.Command {
 
 var versioner = func(conf *config.Config) (context.CancelFunc, error) {
 
-	s := `Version:	%s
-GitCommitID:	%s
+	s := `metrics-forwarder
+version:	%s
+revision:	%s
+compile:	%s
+go version:	%s
 `
 
-	fmt.Printf(s, Version, GitCommit)
+	fmt.Printf(s, Version, GitCommit, BuidDate, GoVersion)
 
 	return nil, nil
 }
