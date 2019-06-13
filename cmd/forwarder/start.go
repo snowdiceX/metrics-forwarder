@@ -14,7 +14,26 @@ import (
 )
 
 func addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&config.GetConfig().LogConfigPath, "log", "./config/log.conf", "log config file path")
+	cmd.Flags().StringVar(&config.GetConfig().LogConfigPath,
+		"log", "./log.conf", "log config file path")
+	cmd.Flags().StringVar(&config.GetConfig().Pull,
+		"pull", "http://127.0.0.1:26660/metrics", "pull metrics url")
+	cmd.Flags().StringVar(&config.GetConfig().Push,
+		"push", "http://127.0.0.1:9091", "push metrics url")
+	cmd.Flags().StringVar(&config.GetConfig().Job,
+		"job", "push", "push job name")
+	// cmd.Flags().StringVar(&config.GetConfig().Instance,
+	// 	"instance", "pushgateway", "instance")
+	cmd.Flags().StringVar(&config.GetConfig().Zone,
+		"zone", "east", "zone of server")
+	cmd.Flags().StringVar(&config.GetConfig().Host,
+		"host", "127.0.0.1", "host ip")
+	cmd.Flags().StringVar(&config.GetConfig().Group,
+		"group", "service", "group label name")
+	cmd.Flags().StringVar(&config.GetConfig().GroupValue,
+		"group_value", "blockchain", "group label value")
+	cmd.Flags().Uint32Var(&config.GetConfig().Ticker,
+		"ticker", 30000, "time ticker")
 }
 
 // NewStartCommand create start command
@@ -38,13 +57,13 @@ func starter(conf *config.Config) (context.CancelFunc, error) {
 
 	// Construct forwarder collector.
 	collector := collector.NewForwarderCollector(
-		"mainnet", "78", "http://127.0.0.1:26660/metrics", reg)
+		conf.Zone, conf.Host, conf.Pull, reg)
 
-	tick := time.NewTicker(time.Millisecond * 30000)
+	tick := time.NewTicker(time.Millisecond * time.Duration(conf.Ticker))
 	for range tick.C {
-		if err := push.New("http://127.0.0.1:9091", "irishub").
+		if err := push.New(conf.Push, conf.Job).
 			Collector(collector).
-			Grouping("service", "blockchain").
+			Grouping(conf.Group, conf.GroupValue).
 			Push(); err != nil {
 			log.Errorf("Could not push metrics to pushgateway: %d", err)
 		}
