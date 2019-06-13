@@ -12,6 +12,7 @@ import (
 var (
 	// Version of forwarder
 	Version = "0.0.0"
+
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
 )
@@ -30,8 +31,11 @@ func NewVersionCommand(run Runner, isKeepRunning bool) *cobra.Command {
 
 var versioner = func(conf *config.Config) (context.CancelFunc, error) {
 
-	fmt.Println("Version: \t", Version,
-		"\nGitCommitID: \t", GitCommit)
+	s := `Version:	%s
+GitCommitID:	%s
+`
+
+	fmt.Printf(s, Version, GitCommit)
 
 	return nil, nil
 }
