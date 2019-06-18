@@ -25,10 +25,10 @@ type MetricsSource struct {
 // Pull is a method for the metrics gathering.
 // Since it may actually be really
 // expensive, it must only be called once per collection.
-func (c *MetricsSource) Pull() (
+func (c *MetricsSource) Pull(url string) (
 	metricFamilies map[string]*dto.MetricFamily, err error) {
 
-	resp, err := http.Get(c.URL)
+	resp, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func (cc ForwarderCollector) Describe(ch chan<- *prometheus.Desc) {
 // Note that Collect could be called concurrently, so we depend on
 // ReallyExpensiveAssessmentOfTheSystemState to be concurrency-safe.
 func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
-	families, err := cc.Source.Pull()
+	families, err := cc.Source.Pull(cc.Source.URL)
 	if err != nil {
 		log.Errorf("pull metrics error: %v", err)
 		return
@@ -94,12 +94,12 @@ func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
 // MetricsSource. Finally, it registers the ForwarderCollector with a
 // wrapping Registerer that adds the zone as a label. In this way, the metrics
 // collected by different ForwarderCollectors do not collide.
-func NewForwarderCollector(zone, host, url string,
+func NewForwarderCollector(zone, host, pull string,
 	reg prometheus.Registerer) *ForwarderCollector {
 	c := &MetricsSource{
 		Zone: zone,
 		Host: host,
-		URL:  url,
+		URL:  pull,
 	}
 	cc := ForwarderCollector{Source: c}
 	prometheus.WrapRegistererWith(
