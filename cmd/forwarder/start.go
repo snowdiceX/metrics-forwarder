@@ -90,6 +90,7 @@ func starter(conf *config.Config) (context.CancelFunc, error) {
 
 			tick := time.NewTicker(time.Millisecond * time.Duration(job.Ticker))
 			for range tick.C {
+				log.Info("tick...")
 				if err := push.New(conf.Push, job.Name).
 					Collector(collector).
 					Grouping(job.Group, job.GroupValue).

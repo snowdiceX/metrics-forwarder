@@ -63,11 +63,11 @@ func (cc ForwarderCollector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(cc, ch)
 }
 
-// Collect first triggers the ReallyExpensiveAssessmentOfTheSystemState. Then it
+// Collect first triggers the Pull. Then it
 // creates constant metrics for each host on the fly based on the returned data.
 //
 // Note that Collect could be called concurrently, so we depend on
-// ReallyExpensiveAssessmentOfTheSystemState to be concurrency-safe.
+// Pull to be concurrency-safe.
 func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
 	families, err := cc.Source.Pull(cc.Source.URL)
 	if err != nil {
@@ -96,15 +96,15 @@ func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
 // collected by different ForwarderCollectors do not collide.
 func NewForwarderCollector(zone, host, pull string,
 	reg prometheus.Registerer) *ForwarderCollector {
-	c := &MetricsSource{
+	src := &MetricsSource{
 		Zone: zone,
 		Host: host,
 		URL:  pull,
 	}
-	cc := ForwarderCollector{Source: c}
+	forwarder := ForwarderCollector{Source: src}
 	prometheus.WrapRegistererWith(
-		prometheus.Labels{"zone": zone}, reg).MustRegister(cc)
-	return &cc
+		prometheus.Labels{"zone": zone}, reg).MustRegister(forwarder)
+	return &forwarder
 }
 
 func buildCounter(host string, family *dto.MetricFamily,
