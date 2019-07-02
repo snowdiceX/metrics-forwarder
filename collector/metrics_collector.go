@@ -94,16 +94,13 @@ func (cc ForwarderCollector) Collect(ch chan<- prometheus.Metric) {
 // MetricsSource. Finally, it registers the ForwarderCollector with a
 // wrapping Registerer that adds the zone as a label. In this way, the metrics
 // collected by different ForwarderCollectors do not collide.
-func NewForwarderCollector(zone, host, pull string,
-	reg prometheus.Registerer) *ForwarderCollector {
+func NewForwarderCollector(zone, host, pull string) *ForwarderCollector {
 	src := &MetricsSource{
 		Zone: zone,
 		Host: host,
 		URL:  pull,
 	}
 	forwarder := ForwarderCollector{Source: src}
-	prometheus.WrapRegistererWith(
-		prometheus.Labels{"zone": zone}, reg).MustRegister(forwarder)
 	return &forwarder
 }
 

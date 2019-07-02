@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 
 	"github.com/snowdiceX/metrics-forwarder/collector"
@@ -77,24 +76,24 @@ func starter(conf *config.Config) (context.CancelFunc, error) {
 	if err != nil {
 		log.Warn("Load config error: ", err.Error())
 	}
+
 	for i := 0; i < len(conf.Jobs); i++ {
 		job := conf.Jobs[i]
 		go func() {
-			// Since we are dealing with custom Collector implementations, it might
-			// be a good idea to try it out with a pedantic registry.
-			reg := prometheus.NewPedanticRegistry()
-
 			// Construct forwarder collector.
 			collector := collector.NewForwarderCollector(
-				job.Zone, job.Host, job.Pull, reg)
+				job.Zone, job.Host, job.Pull)
 
 			tick := time.NewTicker(time.Millisecond * time.Duration(job.Ticker))
+
+			// Note: everytime New a pusher will call Pull
+			pusher := push.New(conf.Push, job.Name).
+				Collector(collector).
+				Grouping(job.Group, job.GroupValue)
+
 			for range tick.C {
-				log.Info("tick...")
-				if err := push.New(conf.Push, job.Name).
-					Collector(collector).
-					Grouping(job.Group, job.GroupValue).
-					Push(); err != nil {
+				log.Infof("tick: %d, %s", job.Ticker, job.Pull)
+				if err := pusher.Push(); err != nil {
 					log.Errorf("Could not push metrics to pushgateway: %d", err)
 				}
 			}
