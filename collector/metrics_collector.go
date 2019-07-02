@@ -44,7 +44,7 @@ func (c *MetricsSource) Pull(url string) (
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("metrics: %d", len(metricFamilies))
+	log.Infof("metrics: %d; %s", len(metricFamilies), url)
 	for k, m := range metricFamilies {
 		log.Trace("metric family: ", k, m.GetName(), "; ", m.Help, "; ", m.Type)
 	}
